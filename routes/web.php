@@ -1,0 +1,159 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PosController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\StockController;
+use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\UserController;
+
+
+/*
+|--------------------------------------------------------------------------
+| GUEST
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware('guest')->group(function () {
+
+    Route::get('/login', [AuthController::class, 'showLoginForm'])
+        ->name('login');
+
+    Route::post('/login', [AuthController::class, 'login'])
+        ->name('login.process');
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| AUTHENTICATED
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware('auth')->group(function () {
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOGOUT
+    |--------------------------------------------------------------------------
+    */
+
+    Route::post('/logout', [AuthController::class, 'logout'])
+        ->name('logout');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | DASHBOARD
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/', function () {
+        return redirect()->route('dashboard');
+    });
+
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->name('dashboard');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | POS
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/pos', [PosController::class, 'index'])
+        ->name('pos.index');
+
+    Route::post('/pos/checkout', [PosController::class, 'checkout'])
+        ->name('pos.checkout');
+
+    Route::get('/pos/receipt/{transaction}', [PosController::class, 'receipt'])
+        ->name('pos.receipt');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | TRANSACTIONS
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/transactions', [TransactionController::class, 'index'])
+        ->name('transactions.index');
+
+    Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])
+        ->name('transactions.show');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | ADMIN
+    |--------------------------------------------------------------------------
+    */
+
+    Route::middleware('role:admin')->group(function () {
+
+        /*
+        |--------------------------------------------------------------------------
+        | PRODUCTS
+        |--------------------------------------------------------------------------
+        */
+
+        Route::resource('products', ProductController::class);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | CATEGORIES
+        |--------------------------------------------------------------------------
+        */
+
+        Route::resource('categories', CategoryController::class);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | STOCKS
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/stocks', [StockController::class, 'index'])
+            ->name('stocks.index');
+
+        Route::get('/stocks/history', [StockController::class, 'history'])
+            ->name('stocks.history');
+
+        Route::post('/stocks/{product}/adjust', [StockController::class, 'adjust'])
+            ->name('stocks.adjust');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | REPORTS
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/reports', [ReportController::class, 'index'])
+            ->name('reports.index');
+
+        Route::get('/reports/sales', [ReportController::class, 'sales'])
+            ->name('reports.sales');
+
+        Route::get('/reports/products', [ReportController::class, 'products'])
+            ->name('reports.products');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | USERS
+        |--------------------------------------------------------------------------
+        */
+
+        Route::resource('users', UserController::class);
+    });
+});
