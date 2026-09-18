@@ -5,39 +5,58 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        $today = Carbon::today();
+        /*
+        |--------------------------------------------------------------------------
+        | STATISTIK HARI INI
+        |--------------------------------------------------------------------------
+        */
 
-        $todayTransactions = Transaction::whereDate(
-            'created_at',
-            $today
-        )->where('status', 'paid');
+        $today = now()->toDateString();
 
-        $totalSalesToday = (clone $todayTransactions)->sum('total');
+        $productsCount = Product::where('is_active', true)->count();
 
-        $totalTransactionsToday = (clone $todayTransactions)->count();
+        $transactionsCount = Transaction::whereDate('created_at', $today)
+            ->where('status', 'paid')
+            ->count();
 
-        $totalProductsSoldToday = TransactionItem::whereHas(
-            'transaction',
-            function ($query) use ($today) {
-                $query->whereDate('created_at', $today)
-                    ->where('status', 'paid');
-            }
-        )->sum('quantity');
+        $revenueToday = Transaction::whereDate('created_at', $today)
+            ->where('status', 'paid')
+            ->sum('total');
 
-        $lowStockProducts = Product::where(
-            'stock',
-            '<=',
-            5
-        )->where('is_active', true)->count();
+        $lowStockCount = Product::where('stock', '<=', 5)
+            ->where('is_active', true)
+            ->count();
 
-        $topProducts = TransactionItem::select(
+
+        /*
+        |--------------------------------------------------------------------------
+        | PRODUK STOK MENIPIS
+        |--------------------------------------------------------------------------
+        */
+
+        $lowStockProducts = Product::with('category')
+            ->where('stock', '<=', 5)
+            ->where('is_active', true)
+            ->orderBy('stock', 'asc')
+            ->orderBy('name', 'asc')
+            ->limit(5)
+            ->get();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | PRODUK FAVORIT
+        |--------------------------------------------------------------------------
+        */
+
+        $favoriteProducts = TransactionItem::query()
+            ->select(
                 'product_id',
                 'product_name',
                 DB::raw('SUM(quantity) as total_sold'),
@@ -51,56 +70,33 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | TRANSAKSI TERBARU
+        |--------------------------------------------------------------------------
+        */
+
         $recentTransactions = Transaction::with('user')
-            ->latest()
+            ->latest('created_at')
             ->limit(10)
             ->get();
 
-        $salesLast7Days = [];
 
-        for ($i = 6; $i >= 0; $i--) {
-            $date = Carbon::today()->subDays($i);
-
-            $sales = Transaction::whereDate(
-                    'created_at',
-                    $date
-                )
-                ->where('status', 'paid')
-                ->sum('total');
-
-            $salesLast7Days[] = [
-                'date' => $date->format('d/m'),
-                'total' => $sales,
-            ];
-        }
-
-        $salesLast30Days = [];
-
-        for ($i = 29; $i >= 0; $i--) {
-            $date = Carbon::today()->subDays($i);
-
-            $sales = Transaction::whereDate(
-                    'created_at',
-                    $date
-                )
-                ->where('status', 'paid')
-                ->sum('total');
-
-            $salesLast30Days[] = [
-                'date' => $date->format('d/m'),
-                'total' => $sales,
-            ];
-        }
+        /*
+        |--------------------------------------------------------------------------
+        | DASHBOARD
+        |--------------------------------------------------------------------------
+        */
 
         return view('dashboard.index', compact(
-            'totalSalesToday',
-            'totalTransactionsToday',
-            'totalProductsSoldToday',
+            'productsCount',
+            'transactionsCount',
+            'revenueToday',
+            'lowStockCount',
             'lowStockProducts',
-            'topProducts',
-            'recentTransactions',
-            'salesLast7Days',
-            'salesLast30Days'
+            'favoriteProducts',
+            'recentTransactions'
         ));
     }
 }
