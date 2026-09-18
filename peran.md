@@ -6,6 +6,7 @@ ALIFNUR :-CONTROLEER
           -user
 NABIL   :-layouts
         :-components
+        :-categories
 aldi    :-pos
          -partials
         -products
