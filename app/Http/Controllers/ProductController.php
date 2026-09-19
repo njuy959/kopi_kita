@@ -15,247 +15,240 @@ class ProductController extends Controller
         $query = Product::with('category');
 
         if ($request->filled('search')) {
-            $query->where(
-                'name',
-                'like',
-                '%' . $request->search . '%'
-            );
+            $search = trim($request->search);
+
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%');
+            });
         }
 
-        if ($request->filled('category')) {
-            $query->where(
-                'category_id',
-                $request->category
-            );
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
         }
 
-        if ($request->filled('status')) {
-
-            $query->where(
-                'is_active',
-                $request->status === 'active'
-            );
-        }
-
-        if ($request->stock === 'low') {
-            $query->where('stock', '<=', 5);
-        }
-
-        if ($request->stock === 'empty') {
-            $query->where('stock', 0);
+        if ($request->filled('is_active')) {
+            $query->where('is_active', $request->is_active);
         }
 
         $products = $query
             ->latest()
-            ->paginate(10)
+            ->paginate(15)
             ->withQueryString();
 
         $categories = Category::orderBy('name')->get();
 
-        return view(
-            'products.index',
-            compact('products', 'categories')
-        );
+        return view('products.index', compact(
+            'products',
+            'categories'
+        ));
     }
+
 
     public function create()
     {
         $categories = Category::orderBy('name')->get();
 
-        return view(
-            'products.create',
-            compact('categories')
-        );
+        return view('products.create', compact('categories'));
     }
+
 
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'category_id' => [
+                'required',
+                'integer',
+                'exists:categories,id',
+            ],
+
             'name' => [
                 'required',
                 'string',
-                'max:255'
+                'max:255',
             ],
-            'category_id' => [
-                'required',
-                'exists:categories,id'
-            ],
+
             'description' => [
                 'nullable',
-                'string'
+                'string',
+                'max:1000',
             ],
+
             'price' => [
                 'required',
                 'numeric',
-                'min:0'
+                'min:0',
             ],
+
             'stock' => [
                 'required',
                 'integer',
-                'min:0'
+                'min:0',
             ],
+
             'image' => [
                 'nullable',
                 'image',
                 'mimes:jpg,jpeg,png,webp',
-                'max:2048'
+                'max:2048',
             ],
+
             'is_active' => [
-                'nullable',
-                'boolean'
+                'required',
+                Rule::in(['0', '1', 0, 1]),
             ],
         ]);
+
 
         if ($request->hasFile('image')) {
             $validated['image'] = $request
                 ->file('image')
                 ->store('products', 'public');
+        } else {
+            $validated['image'] = null;
         }
 
-        $validated['is_active'] = $request->boolean(
-            'is_active'
-        );
+
+        $validated['is_active'] = (bool) $request->input('is_active');
+
 
         Product::create($validated);
 
+
         return redirect()
             ->route('products.index')
-            ->with(
-                'success',
-                'Produk berhasil ditambahkan.'
-            );
+            ->with('success', 'Produk berhasil ditambahkan.');
     }
+
 
     public function show(Product $product)
     {
         $product->load('category');
 
-        return view(
-            'products.show',
-            compact('product')
-        );
+        return view('products.show', compact('product'));
     }
+
 
     public function edit(Product $product)
     {
+        $product->load('category');
+
         $categories = Category::orderBy('name')->get();
 
-        return view(
-            'products.edit',
-            compact('product', 'categories')
-        );
+        return view('products.edit', compact(
+            'product',
+            'categories'
+        ));
     }
 
-    public function update(
-        Request $request,
-        Product $product
-    ) {
+
+    public function update(Request $request, Product $product)
+    {
         $validated = $request->validate([
+            'category_id' => [
+                'required',
+                'integer',
+                'exists:categories,id',
+            ],
+
             'name' => [
                 'required',
                 'string',
-                'max:255'
+                'max:255',
             ],
-            'category_id' => [
-                'required',
-                'exists:categories,id'
-            ],
+
             'description' => [
                 'nullable',
-                'string'
+                'string',
+                'max:1000',
             ],
+
             'price' => [
                 'required',
                 'numeric',
-                'min:0'
+                'min:0',
             ],
+
             'stock' => [
                 'required',
                 'integer',
-                'min:0'
+                'min:0',
             ],
+
             'image' => [
                 'nullable',
                 'image',
                 'mimes:jpg,jpeg,png,webp',
-                'max:2048'
+                'max:2048',
             ],
+
             'is_active' => [
-                'nullable',
-                'boolean'
+                'required',
+                Rule::in(['0', '1', 0, 1]),
             ],
         ]);
 
+
         if ($request->hasFile('image')) {
 
-            if (
-                $product->image &&
-                Storage::disk('public')->exists(
-                    $product->image
-                )
-            ) {
-                Storage::disk('public')->delete(
-                    $product->image
-                );
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
             }
 
             $validated['image'] = $request
                 ->file('image')
                 ->store('products', 'public');
+        } else {
+
+            unset($validated['image']);
+
         }
 
-        $validated['is_active'] = $request->boolean(
-            'is_active'
-        );
+
+        $validated['is_active'] = (bool) $request->input('is_active');
+
 
         $product->update($validated);
 
+
         return redirect()
             ->route('products.index')
-            ->with(
-                'success',
-                'Produk berhasil diperbarui.'
-            );
+            ->with('success', 'Produk berhasil diperbarui.');
     }
+
 
     public function destroy(Product $product)
     {
-        /*
-         * Produk yang sudah digunakan transaksi
-         * tidak langsung dihapus secara permanen.
-         */
         if ($product->transactionItems()->exists()) {
-
-            $product->update([
-                'is_active' => false,
-            ]);
-
             return redirect()
                 ->route('products.index')
                 ->with(
-                    'success',
-                    'Produk sudah digunakan dalam transaksi sehingga dinonaktifkan.'
+                    'error',
+                    'Produk tidak dapat dihapus karena sudah digunakan dalam transaksi.'
                 );
         }
 
-        if (
-            $product->image &&
-            Storage::disk('public')->exists(
-                $product->image
-            )
-        ) {
-            Storage::disk('public')->delete(
-                $product->image
-            );
+
+        if ($product->stockHistories()->exists()) {
+            return redirect()
+                ->route('products.index')
+                ->with(
+                    'error',
+                    'Produk tidak dapat dihapus karena memiliki riwayat stok.'
+                );
         }
+
+
+        if ($product->image) {
+            Storage::disk('public')->delete($product->image);
+        }
+
 
         $product->delete();
 
+
         return redirect()
             ->route('products.index')
-            ->with(
-                'success',
-                'Produk berhasil dihapus.'
-            );
+            ->with('success', 'Produk berhasil dihapus.');
     }
 }
