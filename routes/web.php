@@ -21,17 +21,20 @@ use App\Http\Controllers\UserController;
 
 Route::middleware('guest')->group(function () {
 
+    // Halaman Login
     Route::get('/login', [AuthController::class, 'showLoginForm'])
         ->name('login');
 
+    // Proses Login
     Route::post('/login', [AuthController::class, 'login'])
         ->name('login.process');
+
 });
 
 
 /*
 |--------------------------------------------------------------------------
-| AUTHENTICATED
+| AUTHENTICATED USER
 |--------------------------------------------------------------------------
 */
 
@@ -49,7 +52,7 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | DASHBOARD
+    | HOME
     |--------------------------------------------------------------------------
     */
 
@@ -57,22 +60,32 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('dashboard');
     });
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | DASHBOARD
+    |--------------------------------------------------------------------------
+    */
+
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
 
 
     /*
     |--------------------------------------------------------------------------
-    | POS
+    | POS / KASIR
     |--------------------------------------------------------------------------
     */
 
+    // Halaman POS
     Route::get('/pos', [PosController::class, 'index'])
         ->name('pos.index');
 
+    // Checkout
     Route::post('/pos/checkout', [PosController::class, 'checkout'])
         ->name('pos.checkout');
 
+    // Struk
     Route::get('/pos/receipt/{transaction}', [PosController::class, 'receipt'])
         ->name('pos.receipt');
 
@@ -83,17 +96,22 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
 
+    // Daftar transaksi
     Route::get('/transactions', [TransactionController::class, 'index'])
         ->name('transactions.index');
 
+    // Detail transaksi
     Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])
         ->name('transactions.show');
 
 
     /*
     |--------------------------------------------------------------------------
-    | ADMIN
+    | ADMIN ONLY
     |--------------------------------------------------------------------------
+    |
+    | Middleware role:admin digunakan untuk semua halaman admin.
+    |
     */
 
     Route::middleware('role:admin')->group(function () {
@@ -122,12 +140,15 @@ Route::middleware('auth')->group(function () {
         |--------------------------------------------------------------------------
         */
 
+        // Daftar stok
         Route::get('/stocks', [StockController::class, 'index'])
             ->name('stocks.index');
 
+        // Riwayat stok
         Route::get('/stocks/history', [StockController::class, 'history'])
             ->name('stocks.history');
 
+        // Penyesuaian stok
         Route::post('/stocks/{product}/adjust', [StockController::class, 'adjust'])
             ->name('stocks.adjust');
 
@@ -138,12 +159,15 @@ Route::middleware('auth')->group(function () {
         |--------------------------------------------------------------------------
         */
 
+        // Dashboard laporan
         Route::get('/reports', [ReportController::class, 'index'])
             ->name('reports.index');
 
+        // Laporan penjualan
         Route::get('/reports/sales', [ReportController::class, 'sales'])
             ->name('reports.sales');
 
+        // Laporan produk
         Route::get('/reports/products', [ReportController::class, 'products'])
             ->name('reports.products');
 
@@ -155,5 +179,7 @@ Route::middleware('auth')->group(function () {
         */
 
         Route::resource('users', UserController::class);
+
     });
+
 });

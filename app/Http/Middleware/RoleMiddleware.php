@@ -27,6 +27,6 @@ class RoleMiddleware
             abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
 
-        return $next($request);
+        return $next($request);;
     }
 }
